@@ -1,42 +1,47 @@
 <template>
-	<div class="home">
-		<!-- header -->
-		<mt-header fixed title="葡萄ToDo">
-		  	<mt-button  slot="left"  @click.native="popupVisible = true">
+
+
+<div class="home">
+    <!-- header -->
+    <mt-header fixed title="葡萄ToDo">
+        <mt-button  slot="left"  @click.native="popupVisible = true">
           <img src="../assets/menu.png">
         </mt-button>
-		    <mt-button class="mr10" slot="right" @click.native="addPrompt">
+        <mt-button class="mr10" slot="right" @click.native="addPrompt">
           <img src="../assets/add.png">
         </mt-button>
-		    <mt-button  slot="right">
+        <mt-button  slot="right">
           <img src="../assets/more.png">
         </mt-button>
-		</mt-header>
-		
-		<ul class="todo-list">
-      <li v-for="todo in todos1" >
+    </mt-header>
+
+    <!-- 内容容器 -->
+    <ul class="todo-list">
+      <li v-for="(todo,index) in todos1" :class="todo.completed ? 'classA' : 'classB' ">
         <div class="view">
-          <label @click="sheetVisible = true"  >
+          <label @click="getIndex(index)" >
             {{ todo.title }}
           </label>
         </div>          
       </li>
     </ul>
 
+     <!-- 一系列弹出框 -->
 
-		<!-- action-sheet -->
-		 <mt-actionsheet :actions="actions" v-model="sheetVisible"></mt-actionsheet>
-      <!-- popup -->
+    <!-- action-sheet 点击TODO事件后屏幕下方弹出选项 -->
+     <mt-actionsheet :actions="actions" v-model="sheetVisible"></mt-actionsheet>
+
+    <!-- popup  点击弹出左侧导航菜单-->
      <mt-popup v-model="popupVisible" position="left" class="popup-3" popup-transition="popup-fade">
-      
-        <Menu></Menu>
-      
+        <Menu></Menu>   
     </mt-popup>
 
-	</div>
+  </div> 
+
 </template>
 
 <script>
+
 // mintui 引用
 import Vue from 'vue'
 import { Popup, MessageBox, Actionsheet } from 'mint-ui'
@@ -44,39 +49,23 @@ Vue.component(Popup.name, Popup)
 Vue.component(MessageBox.name, MessageBox);
 Vue.component(Actionsheet.name, Actionsheet);
 import Menu from '@/components/Menu.vue'
-// import todoStorage from '@/js/store.js'
 
 // 状态
 var filters = {
-  	all: function (todos) {
+  	all: function (todos1) {
    		return todos;
   	},
-  	active: function (todos) {
-   		return todos.filter(function (todo) {
+  	active: function (todos1) {
+   		return todos1.filter(function (todo) {
      		return !todo.completed;
    		});
   	},
-  	completed: function (todos) {
+  	completed: function (todos1) {
    		return todos.filter(function (todo) {
      		return todo.completed;
    		});
   	}
   };
-
-// 存储数据
-(function (exports) {
- 'use strict';
- var STORAGE_KEY = 'todos-vuejs';
- exports.todoStorage = {
-     fetch: function () {
-         return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-     },
-     save: function (todos) {
-         localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-     }
- };
-})(window);
-
 
 
 export default {
@@ -84,43 +73,47 @@ export default {
 
   data(){
     return{ 
-      todos:todoStorage.fetch(),
-      popupVisible:false,
-      sheetVisible:false,
-      actions:[],
-      todos1:[]
+      popupVisible:false,     //左侧导航菜单不可见
+      sheetVisible:false,     //action-sheet组件不可见
+      actions:[],             //存放action-sheet组件里的选项数据name和methods
+      todos1:[],              //数组，存放每次添加TODO事件push进来的数据
+      index:'',               //存放点击todos1数组对象所获得相对应的下标index
+      value:'',               //存放index相对应的todos1.title数据
+      activeColor :'red',
     } 
    },
    components:{
-    Menu
+    Menu          //左侧导航菜单
    },
-   watch:{
-   		
-      todos: {
-             handler: function (todos) {
-               todoStorage.save(todos);
-             },
-             deep: true
-         }
-   },
-
-   mounted(){
-   	this.actions = [{
-      name:'已完成',
-      method:this.doneTodo
-    },{
-   		name:'编辑',
-   		method:this.editTodo
-   	},{
-   		name:'删除',
-   		// method:this.removeTodo(todo)
-   	}]
-   },
+   // watch:{
+   //    todos: {
+   //           handler: function (todos1) {
+   //             todoStorage.save(todos1);
+   //           },
+   //           deep: true
+   //       }
+   // },
+   mounted() {
+    // 钩子函数，action-sheet组件里的选项数据name和methods
+      this.actions = [{
+        name: '已完成',
+        method: this.doneTodo
+      }, {
+        name: '编辑',
+        method: this.editTodo     
+      }, {
+        name: '删除',
+        method: this.removeTodo
+      }];
+    },
 
    methods:{
+    // 函数方法
+
+    // 弹出信息框
    	addPrompt(){
    		var that= this;
-   		MessageBox.prompt('添加ToDo').then(({value})=>{
+   		MessageBox.prompt(' ','添加ToDo').then(({ value }) => {
    			if (value) {
    				that.todos1.push({ title: value, completed: false });
    				console.log(that.todos1);
@@ -128,16 +121,35 @@ export default {
    			};
    		})
    	},
+
+    // 使action-sheet组件可见，并且获取相对应下标index和内容title，分别放进全局参数index和value
+    getIndex(index){
+      this.sheetVisible = true;
+      this.index = index;
+      this.value = this.todos1[this.index].title;
+    },
+
+    doneTodo(){
+      this.todos1[this.index].completed = true ;
+
+    },
+
+    // 点击编辑选项，弹出信息框，输入并编辑
    	editTodo(){
+      MessageBox.prompt(' ', '编辑ToDo', {inputPlaceholder: this.value} ).then(({ value, action }) => {
+        this.todos1[this.index].title = value;
+      })
    	},
-   	removeTodo(){
-   		this.todos.$remove(todo);
+
+    // 点击删除选项，从数组todos1中删除对应的数据
+   	removeTodo(index){
+   		this.todos1.splice(this.index,1);
    	}   	
    },
 
    computed: {
     filteredTodos: function () {
-        return filters[this.visibility](this.todos);
+        return filters[this.visibility](this.todos1);
     }
    }
    
@@ -161,11 +173,16 @@ ul{
 .todo-list li{
 	text-align: center;
 	margin: 10px 0;
-	background: #CCFFCC;
 	height: 45px;
 	width: 90%;
 	display: inline-block;
 	line-height: 45px
+}
+.classA{
+  background: #dbdbdb;
+}
+.classB{
+  background: #ccffcc
 }
 label {
     width: 100%
